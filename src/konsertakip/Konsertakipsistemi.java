@@ -4,7 +4,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.sql.*;
 
-public class KonserTakipSistemi extends Frame implements ActionListener, KeyListener, ItemListener {
+public class Konsertakipsistemi extends Frame implements ActionListener, KeyListener, ItemListener {
 
     static final Color KOYU_MOR  = new Color(90, 20, 60);
     static final Color ACIK_MOR  = new Color(180, 50, 110);
@@ -23,12 +23,15 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
     // Tur secenekleri
     static final String[] TURLER = {"Pop", "Rap", "Rock", "Arabesk"};
 
+    // ROL: true = admin, false = kullanici
+    boolean isAdmin;
+
     // Ana ekran
-    Label     lblBaslik, lblAd, lblTarih, lblKonum, lblFiyat, lblBiletAdet, lblArama, lblTur;
+    Label     lblBaslik, lblRol, lblAd, lblTarih, lblKonum, lblFiyat, lblBiletAdet, lblArama, lblTur;
     TextField tfAd, tfTarih, tfKonum, tfFiyat, tfBiletAdet, tfArama;
-    Choice    chTur;   // konser eklerken tur secimi
-    Checkbox  cbPop, cbRap, cbRock, cbArabesk;  // filtre checkboxlari
-    Button    btnEkle, btnSil, btnBiletAl, btnAra, btnTumunuGoster, btnBiletleriGoster;
+    Choice    chTur;
+    Checkbox  cbPop, cbRap, cbRock, cbArabesk;
+    Button    btnEkle, btnSil, btnBiletAl, btnAra, btnTumunuGoster, btnBiletleriGoster, btnCikisYap;
     List      konserList;
 
     // Bilet ekrani
@@ -36,8 +39,8 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
     Button btnBiletSil, btnKonserlereGeri;
     Label  lblBiletBaslik, lblToplamTutar;
 
-    // Panel'ler (tekrar kullanilacak)
-    Panel pnlBaslik, pnlArama, pnlFiltre, pnlForm, pnlButonlar, pnlListe, pnlBiletAl;
+    // Paneller
+    Panel pnlForm, pnlButonlar;
     Panel pnlBiletEkrani;
 
     MenuBar  menuBar;
@@ -47,8 +50,10 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
     Connection connection;
     static final String DB_URL = "jdbc:sqlite:konser.db";
 
-    public KonserTakipSistemi() {
-        super("Konser Takip Sistemi");
+    // Constructor: rolü parametre olarak alır
+    public Konsertakipsistemi(boolean isAdmin) {
+        super("Konser Takip Sistemi" + (isAdmin ? " [ADMIN]" : " [KULLANICI]"));
+        this.isAdmin = isAdmin;
 
         baglantiKur();
         tabloOlustur();
@@ -88,7 +93,7 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
         pnl.setBackground(KOYU_MOR);
 
         // BASLIK
-        pnlBaslik = new Panel(new FlowLayout(FlowLayout.CENTER));
+        Panel pnlBaslik = new Panel(new FlowLayout(FlowLayout.CENTER));
         pnlBaslik.setBackground(ACIK_MOR);
         pnlBaslik.setPreferredSize(new Dimension(560, 50));
         lblBaslik = new Label("*** Konser Takip Sistemi ***", Label.CENTER);
@@ -96,6 +101,25 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
         lblBaslik.setForeground(ALTIN);
         pnlBaslik.add(lblBaslik);
         pnl.add(pnlBaslik);
+
+        // ROL BILGISI + CIKIS BUTONU
+        Panel pnlRolBar = new Panel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
+        pnlRolBar.setBackground(new Color(60, 10, 45));
+        pnlRolBar.setPreferredSize(new Dimension(560, 35));
+
+        lblRol = new Label(isAdmin ? "Rol: ADMIN" : "Rol: KULLANICI", Label.LEFT);
+        lblRol.setFont(new Font("Dialog", Font.BOLD, 12));
+        lblRol.setForeground(isAdmin ? ALTIN : new Color(150, 220, 150));
+
+        btnCikisYap = new Button("CIKIS YAP");
+        btnCikisYap.setFont(new Font("Dialog", Font.BOLD, 11));
+        btnCikisYap.setForeground(SIYAH);
+        btnCikisYap.setPreferredSize(new Dimension(100, 24));
+        btnCikisYap.addActionListener(this);
+
+        pnlRolBar.add(lblRol);
+        pnlRolBar.add(btnCikisYap);
+        pnl.add(pnlRolBar);
 
         // SEKME BUTONU
         Panel pnlSekme = new Panel(new FlowLayout(FlowLayout.RIGHT, 10, 5));
@@ -110,11 +134,11 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
         pnl.add(pnlSekme);
 
         // ARAMA
-        pnlArama = new Panel(new FlowLayout(FlowLayout.LEFT, 8, 7));
+        Panel pnlArama = new Panel(new FlowLayout(FlowLayout.LEFT, 8, 7));
         pnlArama.setBackground(new Color(110, 25, 75));
         pnlArama.setPreferredSize(new Dimension(560, 48));
-        lblArama = new Label("Konser Ara:");
-        lblArama.setFont(FONT_LABEL); lblArama.setForeground(ALTIN);
+        Label lblArama2 = new Label("Konser Ara:");
+        lblArama2.setFont(FONT_LABEL); lblArama2.setForeground(ALTIN);
         tfArama = new TextField(18); stilField(tfArama);
         tfArama.addKeyListener(this);
         btnAra = new Button("ARA");
@@ -123,30 +147,28 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
         btnTumunuGoster = new Button("TUMU");
         btnTumunuGoster.setFont(FONT_BUTON); btnTumunuGoster.setForeground(SIYAH);
         btnTumunuGoster.setPreferredSize(new Dimension(65, 28)); btnTumunuGoster.addActionListener(this);
-        pnlArama.add(lblArama); pnlArama.add(tfArama);
-        pnlArama.add(btnAra);   pnlArama.add(btnTumunuGoster);
+        pnlArama.add(lblArama2); pnlArama.add(tfArama);
+        pnlArama.add(btnAra);    pnlArama.add(btnTumunuGoster);
         pnl.add(pnlArama);
 
-        // TUR FILTRESI (Checkbox)
-        pnlFiltre = new Panel(new FlowLayout(FlowLayout.LEFT, 12, 7));
+        // TUR FILTRESI
+        Panel pnlFiltre = new Panel(new FlowLayout(FlowLayout.LEFT, 12, 7));
         pnlFiltre.setBackground(new Color(130, 35, 85));
         pnlFiltre.setPreferredSize(new Dimension(560, 45));
         Label lblFiltre = new Label("Tur Filtrele:");
         lblFiltre.setFont(FONT_LABEL); lblFiltre.setForeground(ALTIN);
-
         cbPop     = yeniCheckbox("Pop");
         cbRap     = yeniCheckbox("Rap");
         cbRock    = yeniCheckbox("Rock");
         cbArabesk = yeniCheckbox("Arabesk");
-
         pnlFiltre.add(lblFiltre);
-        pnlFiltre.add(cbPop);
-        pnlFiltre.add(cbRap);
-        pnlFiltre.add(cbRock);
-        pnlFiltre.add(cbArabesk);
+        pnlFiltre.add(cbPop); pnlFiltre.add(cbRap);
+        pnlFiltre.add(cbRock); pnlFiltre.add(cbArabesk);
         pnl.add(pnlFiltre);
 
-        // FORM (tur secimi dahil — 5 satir)
+        // -------------------------------------------------------
+        //  FORM - SADECE ADMIN GOREBILIR
+        // -------------------------------------------------------
         pnlForm = new Panel(new GridLayout(5, 2, 10, 6));
         pnlForm.setBackground(new Color(140, 40, 90));
         pnlForm.setPreferredSize(new Dimension(560, 170));
@@ -172,9 +194,14 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
         chTur.setFont(FONT_FIELD);
         for (String t : TURLER) chTur.add(t);
         pnlForm.add(lblTur); pnlForm.add(chTur);
+
+        // Form sadece admin'e gozukur
+        pnlForm.setVisible(isAdmin);
         pnl.add(pnlForm);
 
-        // EKLE / SIL
+        // -------------------------------------------------------
+        //  EKLE / SIL - SADECE ADMIN
+        // -------------------------------------------------------
         pnlButonlar = new Panel(new FlowLayout(FlowLayout.CENTER, 20, 7));
         pnlButonlar.setBackground(KOYU_MOR);
         pnlButonlar.setPreferredSize(new Dimension(560, 50));
@@ -185,23 +212,27 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
         btnSil.setFont(FONT_BUTON); btnSil.setForeground(SIYAH);
         btnSil.setPreferredSize(new Dimension(170, 34)); btnSil.addActionListener(this);
         pnlButonlar.add(btnEkle); pnlButonlar.add(btnSil);
+
+        // Ekle/Sil sadece admin'e gozukur
+        pnlButonlar.setVisible(isAdmin);
         pnl.add(pnlButonlar);
 
         // KONSER LISTESI
-        pnlListe = new Panel(new BorderLayout(0, 4));
+        Panel pnlListe = new Panel(new BorderLayout(0, 4));
         pnlListe.setBackground(KOYU_MOR);
-        pnlListe.setPreferredSize(new Dimension(560, 175));
+        // Admin varsa form + buton gorunuyor, liste daha kucuk
+        pnlListe.setPreferredSize(new Dimension(560, isAdmin ? 175 : 390));
         Label lblListe = new Label("  Kayitli Konserler:", Label.LEFT);
         lblListe.setFont(new Font("Dialog", Font.BOLD, 13)); lblListe.setForeground(ALTIN);
-        konserList = new List(7, false);
+        konserList = new List(isAdmin ? 7 : 14, false);
         konserList.setBackground(new Color(80, 15, 55));
         konserList.setForeground(GRI); konserList.setFont(FONT_LIST);
         pnlListe.add(lblListe,   BorderLayout.NORTH);
         pnlListe.add(konserList, BorderLayout.CENTER);
         pnl.add(pnlListe);
 
-        // BILET AL
-        pnlBiletAl = new Panel(new FlowLayout(FlowLayout.CENTER, 12, 7));
+        // BILET AL (hem admin hem kullanici gorebilir)
+        Panel pnlBiletAl = new Panel(new FlowLayout(FlowLayout.CENTER, 12, 7));
         pnlBiletAl.setBackground(new Color(140, 40, 90));
         pnlBiletAl.setPreferredSize(new Dimension(560, 50));
         lblBiletAdet = new Label("Bilet Adedi:"); stilLabel(lblBiletAdet);
@@ -283,7 +314,6 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
         tf.setForeground(BEYAZ);
     }
 
-    // Secili checkbox'lardan tur listesi uret
     private String[] seciliTurler() {
         java.util.List<String> liste = new java.util.ArrayList<>();
         if (cbPop.getState())     liste.add("Pop");
@@ -317,18 +347,18 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
     // -------------------------------------------------------
     public void actionPerformed(ActionEvent e) {
         Object k = e.getSource();
-        if      (k == btnEkle)            konserEkle();
-        else if (k == btnSil)             konserSil();
-        else if (k == btnBiletAl)         biletSatinAl();
-        else if (k == btnAra)             konserleriYukle(tfArama.getText().trim(), seciliTurler());
-        else if (k == btnTumunuGoster)    { tfArama.setText(""); konserleriYukle("", tumTurler()); }
-        else if (k == btnBiletleriGoster) biletEkraniGoster();
-        else if (k == btnKonserlereGeri)  konserEkraniGoster();
-        else if (k == btnBiletSil)        biletIptalEt();
-        else if (k == miCikis)            { baglantiKapat(); dispose(); }
+        if      (k == btnEkle && isAdmin)     konserEkle();
+        else if (k == btnSil  && isAdmin)     konserSil();
+        else if (k == btnBiletAl)             biletSatinAl();
+        else if (k == btnAra)                 konserleriYukle(tfArama.getText().trim(), seciliTurler());
+        else if (k == btnTumunuGoster)        { tfArama.setText(""); konserleriYukle("", tumTurler()); }
+        else if (k == btnBiletleriGoster)     biletEkraniGoster();
+        else if (k == btnKonserlereGeri)      konserEkraniGoster();
+        else if (k == btnBiletSil)            biletIptalEt();
+        else if (k == btnCikisYap)            cikisYap();
+        else if (k == miCikis)                { baglantiKapat(); dispose(); }
     }
 
-    // Checkbox degisince otomatik filtrele
     public void itemStateChanged(ItemEvent e) {
         if (tfArama != null)
             konserleriYukle(tfArama.getText().trim(), seciliTurler());
@@ -337,6 +367,13 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
     public void keyReleased(KeyEvent e) { konserleriYukle(tfArama.getText().trim(), seciliTurler()); }
     public void keyPressed(KeyEvent e)  {}
     public void keyTyped(KeyEvent e)    {}
+
+    // Login ekranina don
+    private void cikisYap() {
+        baglantiKapat();
+        dispose();
+        new Loginekrani();
+    }
 
     // -------------------------------------------------------
     //  VERITABANI
@@ -358,7 +395,6 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
                     "konum TEXT NOT NULL, " +
                     "fiyat REAL NOT NULL, " +
                     "tur   TEXT NOT NULL DEFAULT 'Pop')");
-            // Eski tabloya tur sutunu yoksa ekle
             try { st.execute("ALTER TABLE Konser ADD COLUMN tur TEXT NOT NULL DEFAULT 'Pop'"); }
             catch (SQLException ignore) {}
             st.execute("CREATE TABLE IF NOT EXISTS Bilet (" +
@@ -385,10 +421,9 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
     // -------------------------------------------------------
     private void konserleriYukle(String anahtar, String[] turler) {
         konserList.removeAll();
-        if (turler.length == 0) return; // hicbir tur secili degilse bos goster
+        if (turler.length == 0) return;
 
         try {
-            // Tur IN (...) kosulunu dinamik olustur
             StringBuilder inClause = new StringBuilder();
             for (int i = 0; i < turler.length; i++) {
                 inClause.append("?");
@@ -537,5 +572,5 @@ public class KonserTakipSistemi extends Frame implements ActionListener, KeyList
         } catch (Exception ex) { System.out.println("Bilet iptal hatasi: " + ex.getMessage()); }
     }
 
-    public static void main(String[] args) { new KonserTakipSistemi(); }
+    public static void main(String[] args) { new Loginekrani(); }
 }

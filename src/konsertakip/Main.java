@@ -2,6 +2,6 @@ package konsertakip;
 
 public class Main {
     public static void main(String[] args) {
-        new KonserTakipSistemi();
+        new Loginekrani();
     }
 }
