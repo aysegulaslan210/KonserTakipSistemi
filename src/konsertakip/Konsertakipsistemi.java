@@ -372,7 +372,7 @@ public class Konsertakipsistemi extends Frame implements ActionListener, KeyList
     private void cikisYap() {
         baglantiKapat();
         dispose();
-        new Loginekrani();
+        new LoginFrame();
     }
 
     // -------------------------------------------------------
@@ -572,5 +572,5 @@ public class Konsertakipsistemi extends Frame implements ActionListener, KeyList
         } catch (Exception ex) { System.out.println("Bilet iptal hatasi: " + ex.getMessage()); }
     }
 
-    public static void main(String[] args) { new Loginekrani(); }
+    public static void main(String[] args) { new LoginFrame(); }
 }
